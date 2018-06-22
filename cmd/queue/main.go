@@ -84,7 +84,8 @@ var (
 
 	concurrencyQuantumOfTime = flag.Duration("concurrencyQuantumOfTime", 100*time.Millisecond, "")
 	concurrencyModel         = flag.String("concurrencyModel", string(v1alpha1.RevisionRequestConcurrencyModelMulti), "")
-	singleConcurrencyBreaker = queue.NewBreaker(singleConcurrencyQueueDepth, 1)
+	maxConcurrency           = flag.Int("maxConcurrency", 0, "Max number of requests to pass to the instance at once.")
+	breaker                  *queue.Breaker
 )
 
 func initEnv() {
@@ -173,16 +174,9 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		reqChan <- queue.ReqOut
 	}()
-	if *concurrencyModel == string(v1alpha1.RevisionRequestConcurrencyModelSingle) {
-		// Enforce single concurrency and breaking
-		ok := singleConcurrencyBreaker.Maybe(func() {
-			proxy.ServeHTTP(w, r)
-		})
-		if !ok {
-			http.Error(w, "overload", http.StatusServiceUnavailable)
-		}
-	} else {
-		proxy.ServeHTTP(w, r)
+	// Enforce maximum requested concurrency
+	if !breaker.Maybe(func() { proxy.ServeHTTP(w, r) }) {
+		http.Error(w, "overload", http.StatusServiceUnavailable)
 	}
 }
 
@@ -263,6 +257,13 @@ func main() {
 		zap.String(logkey.Configuration, elaConfiguration),
 		zap.String(logkey.Revision, elaRevision),
 		zap.String(logkey.Pod, podName))
+
+	requestedConcurrency := *maxConcurrency
+	if *concurrencyModel == string(v1alpha1.RevisionRequestConcurrencyModelSingle) {
+		logger.Info("Using legacy -concurrencyModel=single flag! Overriding -maxConcurrency to 1")
+		requestedConcurrency = 1
+	}
+	breaker = queue.NewBreaker(singleConcurrencyQueueDepth, requestedConcurrency)
 
 	target, err := url.Parse("http://localhost:8080")
 	if err != nil {
