@@ -65,7 +65,8 @@ func validateConfiguration(configuration *v1alpha1.Configuration) error {
 	if err := validateConfigurationSpec(&configuration.Spec); err != nil {
 		return err
 	}
-	return validateConcurrencyModel(configuration.Spec.RevisionTemplate.Spec.ConcurrencyModel)
+	return validateConcurrencyModel(configuration.Spec.RevisionTemplate.Spec.ConcurrencyModel,
+		configuration.Spec.RevisionTemplate.InstanceMaxRequestConcurrency)
 }
 
 func validateConfigurationSpec(configurationSpec *v1alpha1.ConfigurationSpec) error {
@@ -88,9 +89,14 @@ func validateTemplate(template *v1alpha1.RevisionTemplateSpec) error {
 	return nil
 }
 
-func validateConcurrencyModel(value v1alpha1.RevisionRequestConcurrencyModelType) error {
+func validateConcurrencyModel(value v1alpha1.RevisionRequestConcurrencyModelType, int instanceMaxRequestConcurrency) error {
 	switch value {
-	case v1alpha1.RevisionRequestConcurrencyModelType(""), v1alpha1.RevisionRequestConcurrencyModelMulti, v1alpha1.RevisionRequestConcurrencyModelSingle:
+	case v1alpha1.RevisionRequestConcurrencyModelType(""), v1alpha1.RevisionRequestConcurrencyModelMulti:
+		return nil
+	case v1alpha1.RevisionRequestConcurrencyModelSingle:
+		if instanceMaxRequestConcurrency > 1 {
+			return fmt.Errorf("%q does not support concurrency greater than 1, requested: %d", value, instanceMaxRequestConcurrency)
+		}
 		return nil
 	default:
 		return fmt.Errorf("Unrecognized value for concurrencyModel: %q", value)
