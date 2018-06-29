@@ -66,7 +66,7 @@ func validateConfiguration(configuration *v1alpha1.Configuration) error {
 		return err
 	}
 	return validateConcurrencyModel(configuration.Spec.RevisionTemplate.Spec.ConcurrencyModel,
-		configuration.Spec.RevisionTemplate.InstanceMaxRequestConcurrency)
+		configuration.Spec.RevisionTemplate.Spec.InstanceMaxRequestConcurrency)
 }
 
 func validateConfigurationSpec(configurationSpec *v1alpha1.ConfigurationSpec) error {
@@ -89,7 +89,7 @@ func validateTemplate(template *v1alpha1.RevisionTemplateSpec) error {
 	return nil
 }
 
-func validateConcurrencyModel(value v1alpha1.RevisionRequestConcurrencyModelType, int instanceMaxRequestConcurrency) error {
+func validateConcurrencyModel(value v1alpha1.RevisionRequestConcurrencyModelType, instanceMaxRequestConcurrency v1alpha1.RevisionInstanceRequestMaxConcurrencyType) error {
 	switch value {
 	case v1alpha1.RevisionRequestConcurrencyModelType(""), v1alpha1.RevisionRequestConcurrencyModelMulti:
 		return nil
