@@ -31,6 +31,7 @@ func TestBreakerOverload(t *testing.T) {
 	want := []bool{true, true, false} // Only first two requests will be processed
 
 	locks := b.concurrentRequests(3)
+	unlockAll(locks)
 
 	got := accepted(locks)
 	if !reflect.DeepEqual(want, got) {
@@ -45,10 +46,11 @@ func TestBreakerNoOverload(t *testing.T) {
 	locks := make([]request, 4)
 	locks[0] = b.concurrentRequest()
 	locks[1] = b.concurrentRequest()
-	locks[0].Ok()
+	unlock(locks[0])
 	locks[2] = b.concurrentRequest()
-	locks[1].Ok()
+	unlock(locks[1])
 	locks[3] = b.concurrentRequest()
+	unlockAll(locks[2:])
 	got := accepted(locks)
 
 	if !reflect.DeepEqual(want, got) {
@@ -61,9 +63,10 @@ func TestBreakerRecover(t *testing.T) {
 	want := []bool{true, true, false, false, true, true} // Shedding will stop when capacity opens up
 
 	locks := b.concurrentRequests(4)
-	accepted(locks)
+	unlockAll(locks)
 	// Breaker recovers
 	moreLocks := b.concurrentRequests(2)
+	unlockAll(moreLocks)
 
 	got := accepted(append(locks, moreLocks...))
 	if !reflect.DeepEqual(want, got) {
@@ -89,10 +92,11 @@ func TestBreakerLargeCapacityRecover(t *testing.T) {
 	// Process one request and send one request, 50 times
 	for i := 100; i < 150; i++ {
 		// Open capacity
-		locks[i-100].Ok()
+		unlock(locks[i-100])
 		// Add another request
 		locks = append(locks, b.concurrentRequest())
 	}
+	unlockAll(locks[50:])
 
 	got := accepted(locks)
 	// Check the first few suceeded
@@ -112,12 +116,14 @@ func TestBreakerLargeCapacityRecover(t *testing.T) {
 func TestUnlimitedBreaker(t *testing.T) {
 	b := NewBreaker(1, 0)
 	requests := b.concurrentRequests(1000)
-	for i, ok := range accepted(requests) {
+	unlockAll(requests)
+	for i, ok := range(accepted(requests)) {
 		if !ok {
 			t.Fatalf("Expected request %d to be successful, but it failed.", i)
 		}
 	}
 }
+
 
 // Attempts to perform a concurrent request against the specified breaker.
 func (b *Breaker) concurrentRequest() request {
@@ -149,21 +155,21 @@ func (b *Breaker) concurrentRequests(n int) []request {
 func accepted(requests []request) []bool {
 	got := make([]bool, len(requests))
 	for i, r := range requests {
-		got[i] = r.Ok()
+		got[i] = <-r.accepted
 	}
 	return got
 }
 
-// Allows request to finish and returns whether it was accepted by the
-// breaker or not. May be called multiple times.
-func (r *request) Ok() bool {
-	var ok bool
-	select {
-	case ok = <-r.accepted:
-	default:
-		r.lock.Unlock()
-		ok = <-r.accepted
+func unlock(req request) {
+	req.lock.Unlock()
+	// Verify that function has completed
+	ok := <-req.accepted
+	// Requeue for next usage
+	req.accepted <- ok
+}
+
+func unlockAll(requests []request) {
+	for _, lc := range requests {
+		unlock(lc)
 	}
-	r.accepted <- ok // Requeue for next usage
-	return ok
 }
