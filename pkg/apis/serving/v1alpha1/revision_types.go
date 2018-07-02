@@ -91,7 +91,11 @@ const (
 	RevisionRequestConcurrencyModelMulti RevisionRequestConcurrencyModelType = "Multi"
 )
 
+<<<<<<< HEAD
 type RevisionInstanceConcurrencyType int64
+=======
+type RevisionInstanceRequestMaxConcurrencyType int64
+>>>>>>> dd4fa82fe470fd96e7454dda18daaa95903e366e
 
 // RevisionSpec holds the desired state of the Revision (from the client).
 type RevisionSpec struct {
