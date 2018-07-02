@@ -89,7 +89,8 @@ func validateTemplate(template *v1alpha1.RevisionTemplateSpec) error {
 	return nil
 }
 
-func validateConcurrencyModel(value v1alpha1.RevisionRequestConcurrencyModelType, instanceMaxRequestConcurrency v1alpha1.RevisionInstanceRequestMaxConcurrencyType) error {
+func validateConcurrencyModel(value v1alpha1.RevisionRequestConcurrencyModelType,
+  instanceMaxRequestConcurrency v1alpha1.RevisionInstanceConcurrencyType) error {
 	switch value {
 	case v1alpha1.RevisionRequestConcurrencyModelType(""), v1alpha1.RevisionRequestConcurrencyModelMulti:
 		return nil

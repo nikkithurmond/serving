@@ -113,12 +113,12 @@ func TestConcurrencySettings(t *testing.T) {
 		},
 	}
 
-	if err := ValidateConfiguration(testCtx)(nil, &configuration, &configuration); err != nil {
+	if err := ValidateConfiguration(TestContextWithLogger(t))(nil, &configuration, &configuration); err != nil {
 		t.Errorf("Unexpected error %v from %v", err, configuration)
 	}
 
 	configuration.Spec.RevisionTemplate.Spec.InstanceConcurrency = 5
-	if err := ValidateConfiguration(testCtx)(nil, &configuration, &configuration); err == nil {
+	if err := ValidateConfiguration(TestContextWithLogger(t))(nil, &configuration, &configuration); err == nil {
 		t.Errorf("Expected mismatch between single and parallelism=5 on %v", configuration)
 	} else {
 		if !strings.Contains(err.Error(), "does not support concurrency greater than 1") {
@@ -127,7 +127,7 @@ func TestConcurrencySettings(t *testing.T) {
 	}
 
 	configuration.Spec.RevisionTemplate.Spec.ConcurrencyModel = v1alpha1.RevisionRequestConcurrencyModelMulti
-	if err := ValidateConfiguration(testCtx)(nil, &configuration, &configuration); err != nil {
+	if err := ValidateConfiguration(TestContextWithLogger(t))(nil, &configuration, &configuration); err != nil {
 		t.Errorf("Unexpected error %v from %v", err, configuration)
 	}
 }
