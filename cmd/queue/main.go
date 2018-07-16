@@ -270,6 +270,7 @@ func main() {
 		zap.String(logkey.Pod, podName))
 
 	requestedConcurrency := *maxConcurrency
+	logger.Infof("THE MAX CONCURRENCY IS %v", requestedConcurrency)
 	if *concurrencyModel == string(v1alpha1.RevisionRequestConcurrencyModelSingle) {
 		logger.Info("Using legacy -concurrencyModel=single flag! Overriding -maxConcurrency to 1")
 		requestedConcurrency = 1
